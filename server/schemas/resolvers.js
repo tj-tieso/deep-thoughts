@@ -4,6 +4,20 @@ const { signToken } = require("../utils/auth");
 
 const resolvers = {
   Query: {
+    me: async (parent, args, context) => {
+      // check for the existence of context.user
+      if (context.user) {
+        const userData = await User.findOne({ _id: context.user._id })
+          .select("-__v -password")
+          .populate("thoughts")
+          .populate("friends");
+
+        return userData;
+      }
+      // no context.user property exists means the user isn't authenticated
+      // so we throw AuthenticationError
+      throw new AuthenticationError("Not logged in");
+    },
     thoughts: async (parent, { username }) => {
       const params = username ? { username } : {};
       return Thought.find(params).sort({ createdAt: -1 });
@@ -45,6 +59,7 @@ const resolvers = {
       if (!correctPw) {
         throw new AuthenticationError("Incorrect credentials");
       }
+
       const token = signToken(user);
       return { token, user };
     },
